@@ -6,6 +6,9 @@ set(CMAKE_CXX_FLAGS "--std=c++11")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${homework_2_SOURCE_DIR}/bin)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
+set(USE_ICP_CODE 1)
+set(USE_PCL_ICP 1)
+
 find_package(PCL REQUIRED)
 
 add_definitions(${PCL_DEFINITIONS})
