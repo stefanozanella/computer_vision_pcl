@@ -23,3 +23,6 @@ target_link_libraries(ex3 ${PCL_LIBRARIES})
 
 add_executable (ex4 src/ex4.cpp)
 target_link_libraries(ex4 ${PCL_LIBRARIES})
+
+add_executable (ex5 src/ex5.cpp)
+target_link_libraries(ex5 ${PCL_LIBRARIES})
