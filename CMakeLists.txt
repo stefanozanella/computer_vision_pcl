@@ -1,13 +1,10 @@
 cmake_minimum_required(VERSION 2.8)
 project(homework_2)
 
-set(CMAKE_CXX_FLAGS "--std=c++11")
+add_definitions("--std=c++11")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${homework_2_SOURCE_DIR}/bin)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
-
-set(USE_ICP_CODE 1)
-set(USE_PCL_ICP 1)
 
 find_package(PCL REQUIRED)
 
@@ -29,3 +26,6 @@ target_link_libraries(ex4 ${PCL_LIBRARIES})
 
 add_executable (ex5 src/ex5.cpp)
 target_link_libraries(ex5 ${PCL_LIBRARIES})
+
+add_executable (ex6 src/ex6.cpp)
+target_link_libraries(ex6 ${PCL_LIBRARIES})
