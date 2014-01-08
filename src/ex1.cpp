@@ -1,3 +1,12 @@
+/**
+ * PCL Lab - Ex #1
+ *
+ * Load a point cloud and show only the points with x < 0, all colored in blue.
+ *
+ * Author: Stefano Zanella
+ * Date: 08/01/2014
+ */
+
 #include <iostream>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
@@ -25,7 +34,7 @@ int main(int argc, char** argv) {
   cout << "Original point cloud: " << cloud_in->width << " x " << cloud_in->height << endl;
 
   for (int k = 0; k < cloud_in->points.size(); k++) {
-		if (cloud_in->points[k].y < 0)
+		if (cloud_in->points[k].x < 0)
 		{
       PointXYZRGB p;
       p.x = cloud_in->points[k].x;
@@ -41,14 +50,25 @@ int main(int argc, char** argv) {
   }
 
   PCLVisualizer viewer ("PCL Viewer");
+  int left_vp, right_vp;
+	viewer.createViewPort(0.0, 0.0, 0.5, 1.0, left_vp);
+	viewer.createViewPort(0.5, 0.0, 1.0, 1.0, right_vp);
 	viewer.setBackgroundColor(0, 0, 0);
 	viewer.addCoordinateSystem(0.1);
 	viewer.initCameraParameters();
-	viewer.addText("Blue cloud", 10, 10);
+
+	viewer.addText("Original cloud", 10, 10, "left_vp_text", left_vp);
+	viewer.addText("Segmented cloud", 10, 10, "right_vp_text", right_vp);
+
+  viewer.addPointCloud(
+      cloud_in,
+      "original",
+      left_vp);
   viewer.addPointCloud(
       cloud_out,
       PointCloudColorHandlerRGBField<PointXYZRGB>(cloud_out),
-      "cloud");
+      "segmented",
+      right_vp);
 
   cout << "Visualizing..." << endl;
 

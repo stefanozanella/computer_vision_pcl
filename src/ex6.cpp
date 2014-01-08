@@ -17,6 +17,7 @@
 #include <pcl/registration/correspondence_estimation.h>
 #include <pcl/registration/correspondence_rejection_sample_consensus.h>
 #include <pcl/registration/transformation_estimation_svd.h>
+#include <pcl/registration/ia_ransac.h>
 #include <pcl/registration/icp.h>
 
 using std::vector;
@@ -48,6 +49,7 @@ typedef pcl::registration::CorrespondenceRejectorSampleConsensus<pcl::PointXYZRG
 typedef pcl::registration::TransformationEstimationSVD<pcl::PointXYZRGB, pcl::PointXYZRGB> TransformationEstimator;
 typedef Eigen::Matrix4f Matrix;
 typedef pcl::IterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB> IterativeClosestPoint;
+typedef pcl::SampleConsensusInitialAlignment<pcl::PointXYZRGB, pcl::PointXYZRGB, pcl::FPFHSignature33> InitialAlignment;
 
 string filename_for_cloud(int k) {
   stringstream ss;
@@ -176,29 +178,29 @@ class MultiCloudRegistration {
   vector<ColorPointCloud::Ptr> pre_aligned_clouds;
 
   ColorPointCloud::Ptr align_to_reference(ColorPointCloud::Ptr pc) {
-    CorrespondenceEstimator est;
-    Correspondences correspondences, inliers;
-    CorrespondenceRejector rejector;
-    TransformationEstimator estimator;
-    Matrix transformation;
-    
+//    CorrespondenceEstimator est;
+//    Correspondences correspondences, inliers;
+//    CorrespondenceRejector rejector;
+//    TransformationEstimator estimator;
+//    Matrix transformation;
+//    
     auto pc_features = features_of(pc);
-
-    est.setInputSource(pc_features);
-    est.setInputTarget(ref_features);
-    est.determineCorrespondences(correspondences);
-
-    rejector.setInputSource(pc);
-    rejector.setInputTarget(ref_cloud);
-    rejector.setInputCorrespondences(make_shared<const Correspondences>(correspondences));
-    rejector.setInlierThreshold(0.05);
-    rejector.getCorrespondences(inliers);
-
-    estimator.estimateRigidTransformation(*pc, *ref_cloud, inliers, transformation);
-
+//
+//    est.setInputSource(pc_features);
+//    est.setInputTarget(ref_features);
+//    est.determineCorrespondences(correspondences);
+//
+//    rejector.setInputSource(pc);
+//    rejector.setInputTarget(ref_cloud);
+//    rejector.setInputCorrespondences(make_shared<const Correspondences>(correspondences));
+//    rejector.setInlierThreshold(0.05);
+//    rejector.getCorrespondences(inliers);
+//
+//    estimator.estimateRigidTransformation(*pc, *ref_cloud, inliers, transformation);
+//
     ColorPointCloud::Ptr pre_aligned_pc (new ColorPointCloud);
-    ColorPointCloud::Ptr aligned_pc (new ColorPointCloud);
-    transformPointCloud(*pc, *pre_aligned_pc, transformation);
+//    ColorPointCloud::Ptr aligned_pc (new ColorPointCloud);
+//    transformPointCloud(*pc, *pre_aligned_pc, transformation);
 
 //    IterativeClosestPoint icp;
 //    icp.setMaxCorrespondenceDistance(0.50);
@@ -212,18 +214,28 @@ class MultiCloudRegistration {
 //    cout << (icp.hasConverged() ? "Alignment succeeded!" : "Alignment failed.") << endl;
 //    cout << "Alignment score: " << icp.getFitnessScore() << endl;
 
-    PCLVisualizer viewer ("Correspondence Viewer");
-    viewer.initCameraParameters();
-    viewer.addPointCloud<ColorPoint>(
-      pc,
-      PointCloudColorHandlerRGBField<ColorPoint>(pc),
-      "aligned");
-    viewer.addPointCloud<ColorPoint>(
-      ref_cloud,
-      PointCloudColorHandlerRGBField<ColorPoint>(ref_cloud),
-      "original");
-    viewer.addCorrespondences<ColorPoint>(pc, ref_cloud, inliers);
-    viewer.spin();
+    InitialAlignment ia;
+    ia.setMinSampleDistance(0.01);
+    ia.setMaxCorrespondenceDistance(0.5);
+    //ia.setMaximumIterations();
+    ia.setInputSource(pc);
+    ia.setSourceFeatures(pc_features);
+    ia.setInputTarget(ref_cloud);
+    ia.setTargetFeatures(ref_features);
+    ia.align(*pre_aligned_pc);
+
+//    PCLVisualizer viewer ("Correspondence Viewer");
+//    viewer.initCameraParameters();
+//    viewer.addPointCloud<ColorPoint>(
+//      pc,
+//      PointCloudColorHandlerRGBField<ColorPoint>(pc),
+//      "aligned");
+//    viewer.addPointCloud<ColorPoint>(
+//      ref_cloud,
+//      PointCloudColorHandlerRGBField<ColorPoint>(ref_cloud),
+//      "original");
+//    viewer.addCorrespondences<ColorPoint>(pc, ref_cloud, inliers);
+//    viewer.spin();
 
     return pre_aligned_pc;
   };
