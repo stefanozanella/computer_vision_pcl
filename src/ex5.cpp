@@ -89,11 +89,6 @@ int main(int argc, char** argv) {
 
   transformPointCloud(*src_cloud, *target, icp.getFinalTransformation() * transform);
 
-//  IterativeClosestPoint<PointXYZ, PointXYZ> icp;
-//  icp.setInputSource(src_cloud);
-//  icp.setInputTarget(tgt_cloud);
-//  icp.align(*target);
-
   cout << (icp.hasConverged() ? "Alignment succeeded!" : "Alignment failed.") << endl;
   cout << "Alignment score: " << icp.getFitnessScore() << endl;
   cout << "Final cloud size: " << target->width << " x " << target->height << endl;
