@@ -1,3 +1,14 @@
+/**
+ * PCL Lab - Ex #2
+ *
+ * Create a point cloud obtained by applying the voxel grid filter with
+ * different leaf sizes to different parts of the same cloud and merging the
+ * parts together.
+ *
+ * Author: Stefano Zanella
+ * Date: 08/01/2014
+ */
+
 #include <iostream>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
@@ -146,7 +157,6 @@ int main(int argc, char** argv) {
 	viewer.setBackgroundColor(0, 0, 0);
 	viewer.addCoordinateSystem(0.1);
 	viewer.initCameraParameters();
-	viewer.addText("Blue cloud", 10, 10);
   viewer.addPointCloud(
       cloud_out,
       PointCloudColorHandlerRGBField<PointXYZRGB>(cloud_out),
@@ -155,5 +165,6 @@ int main(int argc, char** argv) {
   cout << "Visualizing..." << endl;
 
   viewer.spin();
+
   return 0;
 }
