@@ -1,3 +1,13 @@
+/**
+ * PCL Lab - Ex #4
+ *
+ * Compute SIFT3D keypoints and FPFH features at keypoints, allowing for both
+ * keypoints and FPFH histogram display.
+ *
+ * Author: Stefano Zanella
+ * Date: 08/01/2014
+ */
+
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -113,32 +123,37 @@ int main(int argc, char** argv) {
   PCLVisualizer viewer ("PCL Viewer");
 	viewer.initCameraParameters();
 
-	int left_viewport (0);
+	int left_viewport, right_viewport;
 	viewer.createViewPort(0.0, 0.0, 0.5, 1.0, left_viewport);
-	viewer.setBackgroundColor(0, 0, 0.5, left_viewport);
-	viewer.addCoordinateSystem(0.1, left_viewport);
+	viewer.createViewPort(0.5, 0.0, 1.0, 1.0, right_viewport);
+	viewer.setBackgroundColor(0, 0, 0.5);
+	viewer.addCoordinateSystem(0.1);
+
 	viewer.addText("Original point cloud", 10, 10, "left_viewport_label", left_viewport);
+	viewer.addText("Keypoints", 10, 10, "right_viewport_label", right_viewport);
+
 	viewer.addPointCloud<PointXYZRGB>(
       cloud_in,
       PointCloudColorHandlerRGBField<PointXYZRGB>(cloud_in),
       "input_cloud_left",
       left_viewport);
-	viewer.addPointCloudNormals<PointXYZRGB, Normal>(cloud_in, normals, normalsVisualizationStep, normalsScale, "normals", left_viewport);
+	viewer.addPointCloudNormals<PointXYZRGB, Normal>(cloud_in,
+      normals,
+      normalsVisualizationStep,
+      normalsScale,
+      "normals",
+      left_viewport);
 
-	int right_viewport (0);
-	viewer.createViewPort(0.5, 0.0, 1.0, 1.0, right_viewport);
-	viewer.setBackgroundColor(0, 0, 0, right_viewport);
-	viewer.addCoordinateSystem(0.1, right_viewport);
-	viewer.addText("Keypoints", 10, 10, "right_viewport_label", right_viewport);
   viewer.addPointCloud(
       keypoints,
       PointCloudColorHandlerCustom<PointXYZRGB>(keypoints, 255, 255, 255),
       "keypoints_cloud",
       right_viewport);
-	viewer.registerPointPickingCallback(pp_callback, (void *) new CallbackArgs(fpfhs));
+
+	viewer.registerPointPickingCallback(pp_callback,
+      (void *) new CallbackArgs(fpfhs));
 
   cout << "Visualizing..." << endl;
-
   viewer.spin();
 
   return 0;
