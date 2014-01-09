@@ -6,7 +6,7 @@ add_definitions("--std=c++11")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${homework_2_SOURCE_DIR}/bin)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
-find_package(PCL REQUIRED)
+find_package(PCL 1.7 REQUIRED)
 
 add_definitions(${PCL_DEFINITIONS})
 include_directories(${PCL_INCLUDE_DIRS})
@@ -29,3 +29,6 @@ target_link_libraries(ex5 ${PCL_LIBRARIES})
 
 add_executable (ex6 src/ex6.cpp)
 target_link_libraries(ex6 ${PCL_LIBRARIES})
+
+add_executable (ex7 src/ex7.cpp)
+target_link_libraries(ex7 ${PCL_LIBRARIES})
