@@ -57,6 +57,7 @@ int main (int argc, char** argv)
 
   // Read Kinect data:
   PointCloudT::Ptr cloud = PointCloudT::Ptr (new PointCloudT);
+  PointCloudT::Ptr cloud_filtered = PointCloudT::Ptr (new PointCloudT);
   if (pcl::io::loadPCDFile(filename, *cloud) < 0)
   {
     cerr << "Failed to read test file `"<< filename << "`." << endl;
@@ -76,6 +77,11 @@ int main (int argc, char** argv)
   people_detector.setSamplingFactor(sampling_factor);              // set a downsampling factor to the point cloud (for increasing speed)
 
   // Display pointcloud:
+  pcl::VoxelGrid<PointT> sor;
+  sor.setInputCloud (cloud);
+  sor.setLeafSize (0.01f, 0.01f, 0.01f);
+  sor.filter (*cloud_filtered);
+
   pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb(cloud);
   // Automatic ground plane estimation
   Eigen::VectorXf ground_coeffs(4);
@@ -86,10 +92,11 @@ int main (int argc, char** argv)
   seg.setModelType (pcl::SACMODEL_PERPENDICULAR_PLANE);
   seg.setMethodType (pcl::SAC_RANSAC);
   seg.setMaxIterations (4000);
-  seg.setDistanceThreshold (0.08);
-  seg.setEpsAngle(0.5);
+  seg.setDistanceThreshold (0.05);
+  seg.setEpsAngle(0.6);
   seg.setAxis(Eigen::Vector3f(0, 1, 0));
-  seg.setInputCloud (cloud);
+
+  seg.setInputCloud (cloud_filtered);
   seg.segment (*inliers, *coefficients);
   if (inliers->indices.size () == 0)
   {
@@ -99,11 +106,11 @@ int main (int argc, char** argv)
   std::cout << "Automatic ground plane: " << coefficients->values[0] << " " << coefficients->values[1] << " " << coefficients->values[2] << " " << coefficients->values[3] << std::endl;
   // Automatic ground plane estimation
 
-  int flip = coefficients->values[1] > 0 ? 1 : -1;
-  ground_coeffs[0] = coefficients->values[0] * flip;
-  ground_coeffs[1] = coefficients->values[1] * flip;
-  ground_coeffs[2] = coefficients->values[2] * flip;
-  ground_coeffs[3] = coefficients->values[3] * flip;
+  ground_coeffs[0] = coefficients->values[0];
+  ground_coeffs[1] = coefficients->values[1];
+  ground_coeffs[2] = coefficients->values[2];
+  ground_coeffs[3] = coefficients->values[3];
+
   std::cout << "Ground plane: " << ground_coeffs(0) << " " << ground_coeffs(1) << " " << ground_coeffs(2) << " " << ground_coeffs(3) << std::endl;
 
   // Perform people detection on the new cloud:
@@ -117,7 +124,7 @@ std::cout << "A" << std::endl;
   // Extract the inliers
   pcl::ExtractIndices<PointT> extract;
   pcl::PointCloud<PointT>::Ptr ground_plane (new pcl::PointCloud<PointT>);
-  extract.setInputCloud (cloud);
+  extract.setInputCloud (cloud_filtered);
   extract.setIndices (inliers);
   extract.setNegative (false);		// to make filter method to return "outliers" instead of "inliers"
   extract.filter (*ground_plane);
