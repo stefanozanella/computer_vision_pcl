@@ -31,29 +31,6 @@ int print_help()
   return 0;
 }
 
-struct callback_args{
-	// structure used to pass arguments to the callback function
-	PointCloudT::Ptr clicked_points_3d;
-	pcl::visualization::PCLVisualizer::Ptr viewerPtr;
-};
-
-void
-pp_callback (const pcl::visualization::PointPickingEvent& event, void* args)
-{
-  struct callback_args* data = (struct callback_args *)args;
-  if (event.getPointIndex () == -1)
-    return;
-  PointT current_point;
-  event.getPoint(current_point.x, current_point.y, current_point.z);
-  data->clicked_points_3d->points.push_back(current_point);
-  // Draw clicked points in red:
-  pcl::visualization::PointCloudColorHandlerCustom<PointT> red (data->clicked_points_3d, 255, 0, 0);
-  data->viewerPtr->removePointCloud("clicked_points");
-  data->viewerPtr->addPointCloud(data->clicked_points_3d, red, "clicked_points");
-  data->viewerPtr->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 10, "clicked_points");
-  std::cout << current_point.x << " " << current_point.y << " " << current_point.z << std::endl;
-}
-
 int main (int argc, char** argv)
 {
   if(pcl::console::find_switch (argc, argv, "--help") || pcl::console::find_switch (argc, argv, "-h"))
@@ -97,36 +74,11 @@ int main (int argc, char** argv)
   people_detector.setClassifier(person_classifier);                // set person classifier
   people_detector.setHeightLimits(min_height, max_height);         // set person classifier
   people_detector.setSamplingFactor(sampling_factor);              // set a downsampling factor to the point cloud (for increasing speed)
-//  people_detector.setSensorPortraitOrientation(true);              // set sensor orientation to vertical
 
   // Display pointcloud:
   pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb(cloud);
-//  viewer.addPointCloud<PointT> (cloud, rgb, "input_cloud");
-//  viewer.setCameraPosition(0,0,-2,0,-1,0,0);
-//
-//  // Add point picking callback to viewer:
-//  struct callback_args cb_args;
-//  PointCloudT::Ptr clicked_points_3d (new PointCloudT);
-//  cb_args.clicked_points_3d = clicked_points_3d;
-//  cb_args.viewerPtr = pcl::visualization::PCLVisualizer::Ptr(&viewer);
-//  viewer.registerPointPickingCallback (pp_callback, (void*)&cb_args);
-//  std::cout << "Shift+click on three floor points, then press 'Q'..." << std::endl;
-//
-//  // Spin until 'Q' is pressed:
-//  viewer.spin();
-//  std::cout << "done." << std::endl;
-  
-  // Ground plane estimation:
-  Eigen::VectorXf ground_coeffs(4);
-//  std::vector<int> clicked_points_indices;
-//  for (unsigned int i = 0; i < clicked_points_3d->points.size(); i++)
-//    clicked_points_indices.push_back(i);
-//  pcl::SampleConsensusModelPlane<PointT> model_plane(clicked_points_3d);
-//  model_plane.computeModelCoefficients(clicked_points_indices,ground_coeffs);
-//  std::cout << "Ground plane: " << ground_coeffs(0) << " " << ground_coeffs(1) << " " << ground_coeffs(2) << " " << ground_coeffs(3) << std::endl;
-  // Manual ground plane estimation
-
   // Automatic ground plane estimation
+  Eigen::VectorXf ground_coeffs(4);
   pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients ());
   pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
   pcl::SACSegmentation<PointT> seg;
@@ -200,49 +152,3 @@ std::cout << "A" << std::endl;
 
   return 0;
 }
-
-//  pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients ());
-//  pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
-//  // Create the segmentation object
-//  pcl::SACSegmentation<PointT> seg;
-//  // Optional
-//  seg.setOptimizeCoefficients (true);
-//  // Mandatory
-//  seg.setModelType (pcl::SACMODEL_PERPENDICULAR_PLANE);
-//  seg.setMethodType (pcl::SAC_RANSAC);
-//  seg.setMaxIterations (1000);
-//  seg.setDistanceThreshold (0.1);
-//  seg.setEpsAngle(0.5);
-//  seg.setAxis(Eigen::Vector3f(0, 1, 0));
-//
-//  // Create the filtering object
-//  pcl::ExtractIndices<PointT> extract;
-//
-//  int i = 0, nr_points = (int) cloud_filtered->points.size ();
-//  // Extract planes while 30% of the original cloud is still there
-//  while (cloud_filtered->points.size () > 0.3 * nr_points)
-//  {
-//    // Segment the largest planar component from the remaining cloud
-//    seg.setInputCloud (cloud_filtered);
-//    seg.segment (*inliers, *coefficients);
-//    if (inliers->indices.size () == 0)
-//    {
-//      std::cerr << "Could not estimate a planar model for the given dataset." << std::endl;
-//      break;
-//    }
-//
-//    std::cerr << "Plane coefficients" << std::endl;
-//    std::cerr << coefficients->values[0] << " " << coefficients->values[1] << " " << coefficients->values[2] << " " << coefficients->values[3] << std::endl << std::endl;
-//    // Extract the inliers
-//    extract.setInputCloud (cloud_filtered);
-//    extract.setIndices (inliers);
-//    extract.setNegative (false);
-//    extract.filter (*plane_cloud);
-//    std::cerr << "PointCloud representing the planar component: " << plane_cloud->width * plane_cloud->height << " data points." << std::endl;
-//
-//    // Create the filtering object
-//    extract.setNegative (true);		// to make filter method to return "outliers" instead of "inliers"
-//    extract.filter (*remaining_cloud);
-//    cloud_filtered.swap (remaining_cloud);
-//    i++;
-//
