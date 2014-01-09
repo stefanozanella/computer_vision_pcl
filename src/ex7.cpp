@@ -1,3 +1,60 @@
+/**
+ * PCL Lab - Ex #7
+ *
+ * Perform automatic ground plane estimation for people detection.
+ *
+ * Author: Stefano Zanella
+ * Date: 09/01/2014
+ */
+
+/*
+ * Software License Agreement (BSD License)
+ *
+ * Point Cloud Library (PCL) - www.pointclouds.org
+ * Copyright (c) 2010-2011, Willow Garage, Inc.
+ * Copyright (c) 2012-, Open Perception, Inc.
+ *
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * * Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above
+ * copyright notice, this list of conditions and the following
+ * disclaimer in the documentation and/or other materials provided
+ * with the distribution.
+ * * Neither the name of the copyright holder(s) nor the names of its
+ * contributors may be used to endorse or promote products derived
+ * from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * main_ground_based_people_detection.cpp
+ * Created on: Nov 30, 2012
+ * Author: Matteo Munaro
+ *
+ * Example file for performing people detection on a PCD file.
+ * As a first step, the ground is manually initialized, then people detection is performed with the GroundBasedPeopleDetectionApp class,
+ * which implements the people detection algorithm described here:
+ * M. Munaro, F. Basso and E. Menegatti,
+ * Tracking people within groups with RGB-D data,
+ * In Proceedings of the International Conference on Intelligent Robots and Systems (IROS) 2012, Vilamoura (Portugal), 2012.
+ */
+
 #include <pcl/console/parse.h>
 #include <pcl/point_types.h>
 #include <pcl/visualization/pcl_visualizer.h>    
@@ -47,7 +104,6 @@ int main (int argc, char** argv)
   Eigen::Matrix3f rgb_intrinsics_matrix;
   rgb_intrinsics_matrix << 525, 0.0, 319.5, 0.0, 525, 239.5, 0.0, 0.0, 1.0; // Kinect RGB camera intrinsics
 
-  // Read if some parameters are passed from command line:
   pcl::console::parse_argument (argc, argv, "--svm", svm_filename);
   pcl::console::parse_argument (argc, argv, "--conf", min_confidence);
   pcl::console::parse_argument (argc, argv, "--min_h", min_height);
@@ -55,7 +111,6 @@ int main (int argc, char** argv)
   pcl::console::parse_argument (argc, argv, "--sample", sampling_factor);
   pcl::console::parse_argument (argc, argv, "--pcd", filename);
 
-  // Read Kinect data:
   PointCloudT::Ptr cloud = PointCloudT::Ptr (new PointCloudT);
   PointCloudT::Ptr cloud_filtered = PointCloudT::Ptr (new PointCloudT);
   if (pcl::io::loadPCDFile(filename, *cloud) < 0)
@@ -64,11 +119,9 @@ int main (int argc, char** argv)
     return (-1);
   } 
 
-  // Create classifier for people detection:
   pcl::people::PersonClassifier<pcl::RGB> person_classifier;
   person_classifier.loadSVMFromFile(svm_filename);   // load trained SVM
 
-  // People detection app initialization:
   pcl::people::GroundBasedPeopleDetectionApp<PointT> people_detector;    // people detection object
   people_detector.setVoxelSize(voxel_size);                        // set the voxel size
   people_detector.setIntrinsics(rgb_intrinsics_matrix);            // set RGB camera intrinsic parameters
@@ -76,14 +129,12 @@ int main (int argc, char** argv)
   people_detector.setHeightLimits(min_height, max_height);         // set person classifier
   people_detector.setSamplingFactor(sampling_factor);              // set a downsampling factor to the point cloud (for increasing speed)
 
-  // Display pointcloud:
+  // Automatic ground plane estimation
   pcl::VoxelGrid<PointT> sor;
   sor.setInputCloud (cloud);
   sor.setLeafSize (0.01f, 0.01f, 0.01f);
   sor.filter (*cloud_filtered);
 
-  pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb(cloud);
-  // Automatic ground plane estimation
   Eigen::VectorXf ground_coeffs(4);
   pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients ());
   pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
@@ -118,7 +169,6 @@ int main (int argc, char** argv)
   people_detector.setInputCloud(cloud);
   people_detector.setGround(ground_coeffs);                    // set floor coefficients
   people_detector.compute(clusters);                           // perform people detection
-std::cout << "A" << std::endl;
   ground_coeffs = people_detector.getGround();                 // get updated floor coefficients
 
   // Extract the inliers
@@ -136,10 +186,11 @@ std::cout << "A" << std::endl;
   viewer.setCameraPosition(0,0,-2,0,-1,0,0);
 
   // Draw cloud and people bounding boxes in the viewer:
-  viewer.addPointCloud<PointT> (cloud, rgb, "input_cloud");
+  viewer.addPointCloud<PointT> (cloud,
+    pcl::visualization::PointCloudColorHandlerRGBField<PointT>(cloud),
+    "input_cloud");
 
   // Draw auto-estimated ground plane
-  viewer.addPlane(*coefficients);
   viewer.addPointCloud(ground_plane,
       pcl::visualization::PointCloudColorHandlerCustom<PointT>(ground_plane, 255,0,0),
       "ground");
