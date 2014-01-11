@@ -54,7 +54,7 @@ int views_no = 6;
 int src_idx = 1;  // TODO: Remove!!!!
 
 void DO_STUFF(PointClouds& views) {
-  PointCloud::Ptr tgt = views.front();
+  PointCloud::Ptr tgt = views.at(2);
   PointCloud::Ptr src = views.at(src_idx);
 
   // Keypoints extraction
@@ -64,7 +64,7 @@ void DO_STUFF(PointClouds& views) {
   pcl::SIFTKeypoint<Point, Point> sift;
   sift.setSearchMethod(
       pcl::search::KdTree<Point>::Ptr(new pcl::search::KdTree<Point>));
-  sift.setScales(0.002f, 6, 4);
+  sift.setScales(0.01f, 3, 2);
   sift.setMinimumContrast(0);
 
   sift.setInputCloud(src);
@@ -79,7 +79,7 @@ void DO_STUFF(PointClouds& views) {
 
   pcl::NormalEstimationOMP<Point, pcl::Normal> normal_estimation;
   normal_estimation.setSearchMethod(pcl::search::KdTree<Point>::Ptr(new pcl::search::KdTree<Point>));
-  normal_estimation.setRadiusSearch(0.01);
+  normal_estimation.setRadiusSearch(0.1);
 
   normal_estimation.setInputCloud(src);
   normal_estimation.compute(*src_normals);
@@ -93,7 +93,7 @@ void DO_STUFF(PointClouds& views) {
 
   pcl::FPFHEstimationOMP<Point, pcl::Normal, pcl::FPFHSignature33> feature_estimation;
   feature_estimation.setSearchMethod(pcl::search::KdTree<Point>::Ptr(new pcl::search::KdTree<Point>));
-  feature_estimation.setRadiusSearch(0.01);
+  feature_estimation.setRadiusSearch(0.1);
 
   feature_estimation.setSearchSurface(src);
   feature_estimation.setInputCloud(src_keypoints);
@@ -118,8 +118,8 @@ void DO_STUFF(PointClouds& views) {
   rejector.setInputSource(src_keypoints);
   rejector.setInputTarget(tgt_keypoints);
   rejector.setInputCorrespondences(boost::make_shared<const pcl::Correspondences>(correspondences));
-  rejector.setInlierThreshold(0.1);
-  rejector.setMaxIterations(4000);
+  rejector.setInlierThreshold(0.05);
+  rejector.setMaxIterations(5000);
   rejector.getCorrespondences(inliers);
 
   // Transformation estimation
@@ -134,15 +134,27 @@ void DO_STUFF(PointClouds& views) {
   PCLVisualizer viewer ("Point Cloud Viewer");
   viewer.initCameraParameters();
 
-//  viewer.addPointCloud<Point>(
-//    src,
-//    CustomColor(src, 255, 0, 0),
-//    "src");
-//
-//  viewer.addPointCloud<Point>(
-//    tgt,
-//    CustomColor(tgt, 0, 255, 0),
-//    "tgt");
+  viewer.addPointCloud<Point>(
+    src,
+    CustomColor(src, 64, 0, 0),
+    "src");
+
+  viewer.addPointCloud<Point>(
+    tgt,
+    CustomColor(tgt, 0, 64, 0),
+    "tgt");
+
+	viewer.addPointCloudNormals<Point, pcl::Normal>(src,
+      src_normals,
+      100,
+      0.02,
+      "src_normals");
+
+	viewer.addPointCloudNormals<Point, pcl::Normal>(tgt,
+      tgt_normals,
+      100,
+      0.02,
+      "tgt_normals");
 
   viewer.addPointCloud<Point>(
     src_keypoints,
