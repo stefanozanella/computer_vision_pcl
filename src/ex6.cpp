@@ -20,6 +20,7 @@
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/filters/extract_indices.h>
+#include <pcl/registration/icp.h>
 
 using std::cout;
 using std::cerr;
@@ -127,9 +128,22 @@ void DO_STUFF(PointClouds& views) {
   Eigen::Matrix4f transformation;
   estimator.estimateRigidTransformation(*src_keypoints, *tgt_keypoints, inliers, transformation);
 
+  PointCloud::Ptr pre_aligned (new PointCloud);
   PointCloud::Ptr aligned (new PointCloud);
-  pcl::transformPointCloud(*src, *aligned, transformation);
+  pcl::transformPointCloud(*src, *pre_aligned, transformation);
   
+  pcl::IterativeClosestPoint<Point, Point> icp;
+  icp.setMaxCorrespondenceDistance(0.50);
+  icp.setRANSACOutlierRejectionThreshold(0.05);
+  icp.setTransformationEpsilon(0.000001);
+  icp.setMaximumIterations(600);
+  icp.setInputSource(pre_aligned);
+  icp.setInputTarget(tgt);
+  icp.align(*aligned);
+
+  cout << (icp.hasConverged() ? "Alignment succeeded!" : "Alignment failed.") << endl;
+  cout << "Alignment score: " << icp.getFitnessScore() << endl;
+
 // DEBUG
   PCLVisualizer viewer ("Point Cloud Viewer");
   viewer.initCameraParameters();
