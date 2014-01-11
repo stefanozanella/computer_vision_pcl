@@ -53,9 +53,10 @@ typedef pcl::ExtractIndices<Point> ExtractIndices;
 // work-in-progress code.
 int views_no = 6;
 int src_idx = 1;  // TODO: Remove!!!!
+int tgt_idx = 0;  // TODO: Remove!!!!
 
 void DO_STUFF(PointClouds& views) {
-  PointCloud::Ptr tgt = views.at(2);
+  PointCloud::Ptr tgt = views.at(tgt_idx);
   PointCloud::Ptr src = views.at(src_idx);
 
   // Keypoints extraction
@@ -366,7 +367,8 @@ void start_ui(PointClouds& views) {
 }
 
 int main(int argc, char **argv) {
-  src_idx = atoi(argv[1]); // TODO: Remove !!!!!
+  src_idx = atoi(argv[2]); // TODO: Remove !!!!!
+  tgt_idx = atoi(argv[1]); // TODO: Remove !!!!!
 
   PointClouds views;
 
