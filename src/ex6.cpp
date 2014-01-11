@@ -1,6 +1,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <cstdlib> // TODO: Remove!!!!
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
@@ -50,15 +51,11 @@ typedef pcl::ExtractIndices<Point> ExtractIndices;
 // TODO: Move this inside main, it's here just so that it's near to
 // work-in-progress code.
 int views_no = 6;
+int src_idx = 1;  // TODO: Remove!!!!
 
 void DO_STUFF(PointClouds& views) {
-  // Adjustable params
-  float min_scales = 0.005;
-  int nr_octaves = 5;
-  int nr_scales_per_octave = 4;
-
   PointCloud::Ptr tgt = views.front();
-  PointCloud::Ptr src = views.at(1);
+  PointCloud::Ptr src = views.at(src_idx);
 
   // Keypoints extraction
   PointCloud::Ptr src_keypoints (new PointCloud);
@@ -67,7 +64,7 @@ void DO_STUFF(PointClouds& views) {
   pcl::SIFTKeypoint<Point, Point> sift;
   sift.setSearchMethod(
       pcl::search::KdTree<Point>::Ptr(new pcl::search::KdTree<Point>));
-  sift.setScales(min_scales, nr_octaves, nr_scales_per_octave);
+  sift.setScales(0.002f, 6, 4);
   sift.setMinimumContrast(0);
 
   sift.setInputCloud(src);
@@ -121,7 +118,7 @@ void DO_STUFF(PointClouds& views) {
   rejector.setInputSource(src_keypoints);
   rejector.setInputTarget(tgt_keypoints);
   rejector.setInputCorrespondences(boost::make_shared<const pcl::Correspondences>(correspondences));
-  rejector.setInlierThreshold(0.25);
+  rejector.setInlierThreshold(0.1);
   rejector.setMaxIterations(4000);
   rejector.getCorrespondences(inliers);
 
@@ -137,22 +134,32 @@ void DO_STUFF(PointClouds& views) {
   PCLVisualizer viewer ("Point Cloud Viewer");
   viewer.initCameraParameters();
 
+//  viewer.addPointCloud<Point>(
+//    src,
+//    CustomColor(src, 255, 0, 0),
+//    "src");
+//
+//  viewer.addPointCloud<Point>(
+//    tgt,
+//    CustomColor(tgt, 0, 255, 0),
+//    "tgt");
+
   viewer.addPointCloud<Point>(
     src_keypoints,
     CustomColor(src_keypoints, 255, 0, 0),
-    "src");
+    "src_keypoints");
 
-//  viewer.addPointCloud<Point>(
-//    remaining,
-//    CustomColor(remaining, 0, 255, 0),
-//    "tgt");
-//
-//  viewer.addPointCloud<Point>(
-//    aligned,
-//    CustomColor(aligned, 0, 0, 255),
-//    "aligned");
-//
-//  viewer.addCorrespondences<Point>(src_keypoints, tgt_keypoints, inliers);
+  viewer.addPointCloud<Point>(
+    tgt_keypoints,
+    CustomColor(tgt_keypoints, 0, 255, 0),
+    "tgt_keypoints");
+
+  viewer.addPointCloud<Point>(
+    aligned,
+    CustomColor(aligned, 0, 0, 255),
+    "aligned");
+
+  viewer.addCorrespondences<Point>(src_keypoints, tgt_keypoints, inliers);
 
   viewer.spin();
 // DEBUG
@@ -232,7 +239,7 @@ class GroundPlaneEraser {
       seg.setMethodType(SAC_RANSAC);
       seg.setMaxIterations(4000);
       seg.setDistanceThreshold(0.01);
-      seg.setEpsAngle(0.5);
+      seg.setEpsAngle(0.6);
       seg.setAxis(Eigen::Vector3f(0, 1, 0));
       extract.setNegative(true);
     }
@@ -333,6 +340,8 @@ void start_ui(PointClouds& views) {
 }
 
 int main(int argc, char **argv) {
+  src_idx = atoi(argv[1]); // TODO: Remove !!!!!
+
   PointClouds views;
 
   cout << "Loading point clouds..." << flush;
