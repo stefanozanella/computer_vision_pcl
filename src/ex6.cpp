@@ -7,14 +7,18 @@
 #include <pcl/filters/filter.h>
 #include <pcl/filters/conditional_removal.h>
 #include <pcl/visualization/pcl_visualizer.h>
-#include <pcl/filters/voxel_grid.h>
-//#include <pcl/keypoints/sift_keypoint.h>
+//#include <pcl/filters/voxel_grid.h>
+#include <pcl/keypoints/sift_keypoint.h>
 #include <pcl/features/normal_3d_omp.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/features/fpfh_omp.h>
 #include <pcl/registration/correspondence_estimation.h>
 #include <pcl/registration/correspondence_rejection_sample_consensus.h>
 #include <pcl/registration/transformation_estimation_svd.h>
+#include <pcl/sample_consensus/sac_model_plane.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/filters/extract_indices.h>
 
 using std::cout;
 using std::cerr;
@@ -27,6 +31,10 @@ using pcl::io::loadPCDFile;
 using pcl::ComparisonOps::GT;
 using pcl::ComparisonOps::LT;
 using pcl::visualization::PCLVisualizer;
+using pcl::ModelCoefficients;
+using pcl::PointIndices;
+using pcl::SACMODEL_PERPENDICULAR_PLANE;
+using pcl::SAC_RANSAC;
 
 typedef pcl::PointXYZRGB Point;
 typedef pcl::PointCloud<Point> PointCloud;
@@ -36,6 +44,8 @@ typedef pcl::ConditionAnd<Point> RemovalCondition;
 typedef pcl::FieldComparison<Point> FieldComparison;
 typedef pcl::visualization::PointCloudColorHandlerRGBField<Point> RGBColor;
 typedef pcl::visualization::PointCloudColorHandlerCustom<Point> CustomColor;
+typedef pcl::SACSegmentation<Point> SACSegmentation;
+typedef pcl::ExtractIndices<Point> ExtractIndices;
 
 // TODO: Move this inside main, it's here just so that it's near to
 // work-in-progress code.
@@ -43,36 +53,28 @@ int views_no = 6;
 
 void DO_STUFF(PointClouds& views) {
   // Adjustable params
-  float min_scales = 0.008;
+  float min_scales = 0.005;
   int nr_octaves = 5;
   int nr_scales_per_octave = 4;
-  float sac_ia_max_iterations = 2000;
 
   PointCloud::Ptr tgt = views.front();
-  PointCloud::Ptr src = views.at(5);
+  PointCloud::Ptr src = views.at(1);
 
   // Keypoints extraction
   PointCloud::Ptr src_keypoints (new PointCloud);
   PointCloud::Ptr tgt_keypoints (new PointCloud);
 
-//  pcl::SIFTKeypoint<Point, Point> sift;
-//  sift.setSearchMethod(
-//      pcl::search::KdTree<Point>::Ptr(new pcl::search::KdTree<Point>));
-//  sift.setScales(min_scales, nr_octaves, nr_scales_per_octave);
-//  sift.setMinimumContrast(0);
-//
-//  sift.setInputCloud(src);
-//  sift.compute(*src_keypoints);
-//
-//  sift.setInputCloud(tgt);
-//  sift.compute(*tgt_keypoints);
+  pcl::SIFTKeypoint<Point, Point> sift;
+  sift.setSearchMethod(
+      pcl::search::KdTree<Point>::Ptr(new pcl::search::KdTree<Point>));
+  sift.setScales(min_scales, nr_octaves, nr_scales_per_octave);
+  sift.setMinimumContrast(0);
 
-  pcl::VoxelGrid<Point> sor;
-  sor.setLeafSize(0.005, 0.005, 0.005);
-  sor.setInputCloud(src);
-  sor.filter(*src_keypoints);
-  sor.setInputCloud(tgt);
-  sor.filter(*tgt_keypoints);
+  sift.setInputCloud(src);
+  sift.compute(*src_keypoints);
+
+  sift.setInputCloud(tgt);
+  sift.compute(*tgt_keypoints);
 
   // Normal estimation
   pcl::PointCloud<pcl::Normal>::Ptr src_normals (new pcl::PointCloud<pcl::Normal>);
@@ -80,12 +82,12 @@ void DO_STUFF(PointClouds& views) {
 
   pcl::NormalEstimationOMP<Point, pcl::Normal> normal_estimation;
   normal_estimation.setSearchMethod(pcl::search::KdTree<Point>::Ptr(new pcl::search::KdTree<Point>));
-  normal_estimation.setRadiusSearch(0.02);
+  normal_estimation.setRadiusSearch(0.01);
 
-  normal_estimation.setInputCloud(src_keypoints);
+  normal_estimation.setInputCloud(src);
   normal_estimation.compute(*src_normals);
 
-  normal_estimation.setInputCloud(tgt_keypoints);
+  normal_estimation.setInputCloud(tgt);
   normal_estimation.compute(*tgt_normals);
 
   // Feature estimation
@@ -94,12 +96,14 @@ void DO_STUFF(PointClouds& views) {
 
   pcl::FPFHEstimationOMP<Point, pcl::Normal, pcl::FPFHSignature33> feature_estimation;
   feature_estimation.setSearchMethod(pcl::search::KdTree<Point>::Ptr(new pcl::search::KdTree<Point>));
-  feature_estimation.setRadiusSearch(0.02);
+  feature_estimation.setRadiusSearch(0.01);
 
+  feature_estimation.setSearchSurface(src);
   feature_estimation.setInputCloud(src_keypoints);
   feature_estimation.setInputNormals(src_normals);
   feature_estimation.compute(*src_features);
 
+  feature_estimation.setSearchSurface(tgt);
   feature_estimation.setInputCloud(tgt_keypoints);
   feature_estimation.setInputNormals(tgt_normals);
   feature_estimation.compute(*tgt_features);
@@ -117,8 +121,8 @@ void DO_STUFF(PointClouds& views) {
   rejector.setInputSource(src_keypoints);
   rejector.setInputTarget(tgt_keypoints);
   rejector.setInputCorrespondences(boost::make_shared<const pcl::Correspondences>(correspondences));
-  rejector.setInlierThreshold(0.05);
-  rejector.setMaxIterations(1000);
+  rejector.setInlierThreshold(0.25);
+  rejector.setMaxIterations(4000);
   rejector.getCorrespondences(inliers);
 
   // Transformation estimation
@@ -127,7 +131,7 @@ void DO_STUFF(PointClouds& views) {
   estimator.estimateRigidTransformation(*src_keypoints, *tgt_keypoints, inliers, transformation);
 
   PointCloud::Ptr aligned (new PointCloud);
-  pcl::transformPointCloud(*src_keypoints, *aligned, transformation);
+  pcl::transformPointCloud(*src, *aligned, transformation);
   
 // DEBUG
   PCLVisualizer viewer ("Point Cloud Viewer");
@@ -138,17 +142,17 @@ void DO_STUFF(PointClouds& views) {
     CustomColor(src_keypoints, 255, 0, 0),
     "src");
 
-  viewer.addPointCloud<Point>(
-    tgt_keypoints,
-    CustomColor(tgt_keypoints, 0, 255, 0),
-    "tgt");
-
-  viewer.addPointCloud<Point>(
-    aligned,
-    CustomColor(aligned, 0, 0, 255),
-    "aligned");
-
-  viewer.addCorrespondences<Point>(src_keypoints, tgt_keypoints, inliers);
+//  viewer.addPointCloud<Point>(
+//    remaining,
+//    CustomColor(remaining, 0, 255, 0),
+//    "tgt");
+//
+//  viewer.addPointCloud<Point>(
+//    aligned,
+//    CustomColor(aligned, 0, 0, 255),
+//    "aligned");
+//
+//  viewer.addCorrespondences<Point>(src_keypoints, tgt_keypoints, inliers);
 
   viewer.spin();
 // DEBUG
@@ -209,18 +213,60 @@ RemovalCondition::Ptr trimming_rule() {
 }
 
 /**
- * Trims all clouds in given list by applying the defined trimming rule.
+ * Performs ground plane removal on a point cloud.
+ */
+class GroundPlaneEraser {
+  private:
+    ModelCoefficients::Ptr coefficients;
+    SACSegmentation seg;
+    ExtractIndices extract;
+    PointIndices::Ptr inliers;
+
+  public:
+    GroundPlaneEraser() :
+      coefficients (new ModelCoefficients),
+      inliers (new PointIndices) 
+    {
+      seg.setOptimizeCoefficients(true);
+      seg.setModelType(SACMODEL_PERPENDICULAR_PLANE);
+      seg.setMethodType(SAC_RANSAC);
+      seg.setMaxIterations(4000);
+      seg.setDistanceThreshold(0.01);
+      seg.setEpsAngle(0.5);
+      seg.setAxis(Eigen::Vector3f(0, 1, 0));
+      extract.setNegative(true);
+    }
+
+    void remove_ground_plane(PointCloud::Ptr &cloud) {
+      seg.setInputCloud(cloud);
+      seg.segment(*inliers, *coefficients);
+
+      extract.setInputCloud(cloud);
+      extract.setIndices(inliers);
+      extract.filter(*cloud);
+    }
+};
+
+/**
+ * Trims all clouds in given list by applying the defined trimming rule and by
+ * removing the ground plane.
  *
- * See `trimming_rule()` for details.
+ * See `trimming_rule()` for further details.
  */
 void trim_clouds(PointClouds& clouds) {
   PointClouds trimmed_clouds;
   RemovalFilter filter (trimming_rule());
+  GroundPlaneEraser gpe;
 
-  for_each(clouds.begin(), clouds.end(), [&trimmed_clouds, &filter](PointCloud::Ptr &pc) {
+  for_each(clouds.begin(), clouds.end(),
+      [&trimmed_clouds, &filter, &gpe](PointCloud::Ptr &pc)
+  {
     PointCloud::Ptr trimmed (new PointCloud);
     filter.setInputCloud(pc);
     filter.filter(*trimmed);
+
+    gpe.remove_ground_plane(trimmed);
+
     trimmed_clouds.push_back(trimmed);
   });
 
