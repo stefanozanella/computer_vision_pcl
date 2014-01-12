@@ -71,18 +71,16 @@ class RobotRegistration {
       sanitize_clouds(views);
     
       Matrix transformation;
-      for (int k = 0; k < views.size(); k += 2) {
+      for (int k = 0; k < views.size() - 1; k += 2) {
         transformation = pairwise_align(views.at(k+1), views.at(k));
         transformPointCloud(*views.at(k+1), *views.at(k+1), transformation);
       }
     
-      transformation = pairwise_align(views.at(2), views.at(1));
-      transformPointCloud(*views.at(2), *views.at(2), transformation);
-      transformPointCloud(*views.at(3), *views.at(3), transformation);
-    
-      transformation = pairwise_align(views.at(4), views.at(3));
-      transformPointCloud(*views.at(4), *views.at(4), transformation);
-      transformPointCloud(*views.at(5), *views.at(5), transformation);
+      for (int k = 1; k < views.size() - 2; k += 2) {
+        transformation = pairwise_align(views.at(k+1), views.at(k));
+        transformPointCloud(*views.at(k+1), *views.at(k+1), transformation);
+        transformPointCloud(*views.at(k+2), *views.at(k+2), transformation);
+      }
     }
 
   private :
