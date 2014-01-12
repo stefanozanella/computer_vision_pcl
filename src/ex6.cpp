@@ -1,3 +1,12 @@
+/**
+ * PCL Lab - Ex #6
+ *
+ * Performs multi-cloud registration.
+ *
+ * Author: Stefano Zanella
+ * Date: 10/01/2014
+ */
+
 #include <vector>
 #include <string>
 #include <iostream>
